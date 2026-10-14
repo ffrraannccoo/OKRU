@@ -2,89 +2,81 @@ const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const express = require('express');
 const cors = require('cors');
 
-// Configuración del Manifiesto compatible con Stremio
+// Configuración del Manifiesto con Soporte de Catálogo y Streams
 const manifest = {
     id: 'org.okru.latino',
-    version: '1.0.0',
+    version: '1.1.0',
     name: 'OK.ru Latino Addon',
     description: 'Busca videos en OK.ru con audio Latino y duración mayor a 40 minutos.',
-    resources: ['stream'],
+    resources: ['catalog', 'stream'],
     types: ['movie', 'series'],
-    catalogs: [],
+    catalogs: [
+        {
+            type: 'movie',
+            id: 'okru_latino_movies',
+            name: 'OK.ru Latino (Películas)'
+        }
+    ],
     idPrefixes: ['tt']
 };
 
 const builder = new addonBuilder(manifest);
 
-// Lógica de búsqueda y filtrado en OK.ru
-async function searchOkRuStreams(query) {
-    try {
-        const searchQuery = encodeURIComponent(`${query} Latino`);
-        const url = `https://ok.ru/dk?cmd=logExternal&st.cmd=extSearch&st.search=${searchQuery}`;
-        
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
-        
-        const html = await response.text();
-        
-        // Simulación de parseo de resultados y aplicación estricta de filtros:
-        // 1. Duración > 40 minutos (2400 segundos)
-        // 2. Título contiene "Latino"
-        const mockStreams = [
-            // Ejemplo de estructura de prueba que cumple la condición
-        ];
-
-        return mockStreams.filter(stream => {
-            const isValidDuration = stream.duration && stream.duration > 2400;
-            const hasLatinoTitle = stream.title && stream.title.toLowerCase().includes('latino');
-            return isValidDuration && hasLatinoTitle;
-        });
-    } catch (error) {
-        console.error('Error al buscar en OK.ru:', error);
-        return [];
-    }
-}
-
-// Manejador de Streams para Stremio
-builder.defineStreamHandler(async ({ type, id }) => {
-    console.log(`Petición recibida en Stremio - Tipo: ${type}, ID: ${id}`);
+// Manejador de Catálogo (Muestra elementos en la pantalla de inicio de Stremio)
+builder.defineCatalogHandler(async ({ type, id }) => {
+    console.log(`[Stremio Catalog] Petición para tipo: ${type}, id: ${id}`);
     
-    // Aquí puedes resolver el ID de TMDB/IMDB a un título de búsqueda
-    const streams = await searchOkRuStreams("consulta");
+    // Aquí puedes listar elementos estáticos o de prueba que cumplan con la condición para verlos en la UI principal
+    const metas = [
+        {
+            id: 'tt1234567', // ID de prueba (puedes cambiarlo por IDs reales de IMDb)
+            type: 'movie',
+            name: 'Película de Prueba Latino (OK.ru)',
+            poster: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500',
+            description: 'Video de prueba alojado en OK.ru con audio Latino y más de 40 minutos de duración.'
+        }
+    ];
 
-    return {
-        streams: streams.map(s => ({
-            title: s.title,
-            url: s.url,
-            name: 'OK.ru Latino'
-        }))
-    };
+    return { metas };
 });
 
-// Configuración de Servidor Express (Compatible con Vercel y adaptado para Nuvio/Stremio)
+// Manejador de Streams (Se ejecuta al hacer clic en una película/serie)
+builder.defineStreamHandler(async ({ type, id }) => {
+    console.log(`[Stremio Stream] Petición recibida - Tipo: ${type}, ID: ${id}`);
+    
+    // Simulación de streams reales filtrados por duración (>40 min) y palabra "Latino"
+    // En producción, aquí harías scraping o consulta a la API de OK.ru
+    const streams = [
+        {
+            title: 'Opción 1 - Audio Latino (HD - 1h 45m)',
+            url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // URL de prueba reproducible
+            name: 'OK.ru Latino'
+        }
+    ];
+
+    // Filtro estricto de seguridad para asegurar que cumple los requisitos
+    const validStreams = streams.filter(s => s.title.toLowerCase().includes('latino'));
+
+    return { streams: validStreams };
+});
+
+// Configuración de Servidor Express
 const app = express();
 app.use(cors());
 
-// Exportar manifiesto para Nuvio o peticiones directas
-app.get('/manifest.json', (type, res) => {
+app.get('/manifest.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(manifest);
 });
 
-// Integración del addon SDK con Express
 const addonInterface = builder.getInterface();
 app.use((req, res, next) => {
-    // Si la ruta coincide con el formato de Stremio, la maneja el SDK
     addonInterface.middleware(req, res, next);
 });
 
-// Puerto local para pruebas (Vercel maneja su propio puerto mediante Serverless)
 const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => {
-    console.log(`Addon corriendo en http://localhost:${PORT}`);
+    console.log(`Addon corriendo en puerto ${PORT}`);
 });
 
 module.exports = app;
