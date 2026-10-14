@@ -1,0 +1,14 @@
+{
+  "name": "addon-okru",
+  "version": "1.0.0",
+  "description": "Addon OK.ru Latino para Stremio y Nuvio",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "stremio-addon-sdk": "^1.6.11"
+  }
+}
